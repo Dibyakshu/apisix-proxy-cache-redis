@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+
+- Docker smoke test: set `stream_plugins: []` and only fail on errors from
+  this plugin (APISIX's stream `syslog` plugin logged an unrelated startup
+  error with the minimal plugin list).
+- README: note about the `syslog` / `prometheus-cache` startup message.
+
 ## 0.3.0
 
 - **Redis Sentinel support:** `policy: "redis-sentinel"`.

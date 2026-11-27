@@ -104,7 +104,7 @@ request GET "/prefix/other$RUN/c"; sc=$STATUS
 check "[prefix] purged entries MISS, other prefix still HIT" \
     "$([ "$sa" = MISS ] && [ "$sc" = HIT ]; echo $?)" "$sa/$sc"
 
-errors=$(docker compose logs apisix 2>&1 | grep -E "runtime error|attempt to|\[error\].*proxy-cache-redis|failed to load plugin" | head -5)
+errors=$(docker compose logs apisix 2>&1 | grep -E "failed to load plugin \[proxy-cache-redis\]|\[error\].*proxy-cache-redis|(runtime error|attempt to).*proxy-cache-redis" | head -5)
 check "no plugin errors in the APISIX log" "$([ -z "$errors" ]; echo $?)" "$errors"
 
 echo

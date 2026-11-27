@@ -13,6 +13,10 @@ deployment:
 plugins:
   - proxy-cache-redis
 
+# the smoke test uses no TCP/UDP proxying; without this, APISIX loads its
+# default stream plugins (incl. syslog), which fail without prometheus
+stream_plugins: []
+
 plugin_attr:
   proxy-cache-redis:
     key_prefix: "apisix:proxy-cache:"

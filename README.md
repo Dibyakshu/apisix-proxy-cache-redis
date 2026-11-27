@@ -102,6 +102,12 @@ plugin_attr:
 > Alternatively, copy the two items under `apisix/plugins/` straight into
 > APISIX's own `apisix/plugins/` directory and skip `extra_lua_path`. Note
 > that an APISIX upgrade can overwrite that directory.
+>
+> If your list doesn't include `prometheus`, APISIX may log
+> `failed to load plugin [syslog] ... lua_shared_dict "prometheus-cache" not configured`
+> at startup. That's APISIX's stream `syslog` plugin, not this plugin, and
+> it's harmless. Add `prometheus` to `plugins:`, or set `stream_plugins: []`
+> if you don't use TCP/UDP proxying.
 
 **3. Reload APISIX:** `apisix reload`, or restart the container.
 
