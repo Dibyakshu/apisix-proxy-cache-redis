@@ -7,6 +7,7 @@ Sentinel** and **Redis Cluster**, so every APISIX node shares one cache.
 It behaves like APISIX's built-in `proxy-cache` plugin with
 `cache_strategy: "memory"`, whose caching rules are carried over line for
 line. On top of that it adds the things a shared production cache needs:
+
 - stampede protection;
 - purge by URL prefix;
 - fail-open behaviour when Redis is down;
@@ -70,7 +71,7 @@ client ──► APISIX node N ──┘         │
 **1. Copy the plugin** to every APISIX node (or into your APISIX image):
 
 ```shell
-git clone https://github.com/<you>/apisix-proxy-cache-redis.git /opt/apisix-plugins/apisix-proxy-cache-redis
+git clone https://github.com/Dibyakshu/apisix-proxy-cache-redis.git /opt/apisix-plugins/apisix-proxy-cache-redis
 ```
 
 You only need the `apisix/` folder. It contains `apisix/plugins/proxy-cache-redis.lua`
@@ -83,12 +84,12 @@ for every option.
 apisix:
   extra_lua_path: "/opt/apisix-plugins/apisix-proxy-cache-redis/?.lua"
 
-plugins:                     # keep your existing list and add this one
+plugins: # keep your existing list and add this one
   - proxy-cache-redis
 
 plugin_attr:
   proxy-cache-redis:
-    redis:                   # and/or redis-sentinel, redis-cluster
+    redis: # and/or redis-sentinel, redis-cluster
       host: 10.0.0.5
       port: 6379
       password: ${{REDIS_PASSWORD}}
@@ -131,58 +132,58 @@ and go through the [production checklist](#production-checklist).
 
 ### `config.yaml`: `plugin_attr.proxy-cache-redis`
 
-| Field | Default | Description |
-|---|---|---|
-| `key_prefix` | `apisix:proxy-cache:` | Prefix of every Redis key. Must not contain `{` or `}`. |
-| `expired_retention` | `60` | Seconds an expired entry stays in Redis. During that time it is reported as `EXPIRED` (not `MISS`), `PURGE` returns 200, and `stale_while_updating` can serve it. |
-| `failure_backoff` | `1` | After a connection error or timeout, the worker skips Redis for this many seconds, then a single request probes it. `0` disables this (not recommended). |
-| `write_concurrency` | `4` | Background write drainers per worker. |
-| `max_pending_writes` | `10000` | Per-worker write queue limit, in items. Writes beyond it are dropped and counted; the response is still served. |
-| `max_pending_bytes` | `67108864` | The same limit in bytes (64 MiB per worker). |
-| `redis` | none | Single Redis. See below. |
-| `redis-sentinel` | none | Redis Sentinel. See below. |
-| `redis-cluster` | none | Redis Cluster. See below. |
+| Field                | Default               | Description                                                                                                                                                       |
+| -------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key_prefix`         | `apisix:proxy-cache:` | Prefix of every Redis key. Must not contain `{` or `}`.                                                                                                           |
+| `expired_retention`  | `60`                  | Seconds an expired entry stays in Redis. During that time it is reported as `EXPIRED` (not `MISS`), `PURGE` returns 200, and `stale_while_updating` can serve it. |
+| `failure_backoff`    | `1`                   | After a connection error or timeout, the worker skips Redis for this many seconds, then a single request probes it. `0` disables this (not recommended).          |
+| `write_concurrency`  | `4`                   | Background write drainers per worker.                                                                                                                             |
+| `max_pending_writes` | `10000`               | Per-worker write queue limit, in items. Writes beyond it are dropped and counted; the response is still served.                                                   |
+| `max_pending_bytes`  | `67108864`            | The same limit in bytes (64 MiB per worker).                                                                                                                      |
+| `redis`              | none                  | Single Redis. See below.                                                                                                                                          |
+| `redis-sentinel`     | none                  | Redis Sentinel. See below.                                                                                                                                        |
+| `redis-cluster`      | none                  | Redis Cluster. See below.                                                                                                                                         |
 
 Define only the sections your routes use. A route whose `policy` has no
 section is rejected when you save it, with a clear error.
 
 **`redis`**
 
-| Field | Default |
-|---|---|
-| `host` | required |
-| `port` | `6379` |
-| `username` | none |
-| `password` | none |
-| `database` | `0` |
-| `timeout` (ms) | `200` |
-| `ssl` | `false` |
-| `ssl_verify` | `false` |
-| `server_name` | none |
-| `keepalive_timeout` (ms) | `10000` |
-| `keepalive_pool` | `100` |
+| Field                    | Default  |
+| ------------------------ | -------- |
+| `host`                   | required |
+| `port`                   | `6379`   |
+| `username`               | none     |
+| `password`               | none     |
+| `database`               | `0`      |
+| `timeout` (ms)           | `200`    |
+| `ssl`                    | `false`  |
+| `ssl_verify`             | `false`  |
+| `server_name`            | none     |
+| `keepalive_timeout` (ms) | `10000`  |
+| `keepalive_pool`         | `100`    |
 
 **`redis-sentinel`**
 
-| Field | Default | Notes |
-|---|---|---|
-| `sentinels` | required | List of `"host:port"`. |
-| `master_name` | required | |
-| `sentinel_username` | none | Only if your Sentinels require AUTH. |
-| `sentinel_password` | none | Only if your Sentinels require AUTH. |
-| `username`, `password` | none | For the Redis master. |
+| Field                                                                                            | Default        | Notes                                               |
+| ------------------------------------------------------------------------------------------------ | -------------- | --------------------------------------------------- |
+| `sentinels`                                                                                      | required       | List of `"host:port"`.                              |
+| `master_name`                                                                                    | required       |                                                     |
+| `sentinel_username`                                                                              | none           | Only if your Sentinels require AUTH.                |
+| `sentinel_password`                                                                              | none           | Only if your Sentinels require AUTH.                |
+| `username`, `password`                                                                           | none           | For the Redis master.                               |
 | `database`, `timeout`, `ssl`, `ssl_verify`, `server_name`, `keepalive_timeout`, `keepalive_pool` | as for `redis` | `ssl` applies to both the Sentinels and the master. |
 
 **`redis-cluster`**
 
-| Field | Default | Notes |
-|---|---|---|
-| `nodes` | required | List of `"host:port"`. |
-| `name` | required | Any unique name for this cluster. |
-| `password` | none | |
-| `timeout` (ms) | `200` | |
-| `ssl`, `ssl_verify` | `false` | |
-| `keepalive_timeout`, `keepalive_pool` | as for `redis` | |
+| Field                                 | Default        | Notes                             |
+| ------------------------------------- | -------------- | --------------------------------- |
+| `nodes`                               | required       | List of `"host:port"`.            |
+| `name`                                | required       | Any unique name for this cluster. |
+| `password`                            | none           |                                   |
+| `timeout` (ms)                        | `200`          |                                   |
+| `ssl`, `ssl_verify`                   | `false`        |                                   |
+| `keepalive_timeout`, `keepalive_pool` | as for `redis` |                                   |
 
 Cluster mode also needs this in `config.yaml`:
 
@@ -198,24 +199,24 @@ Passwords can come from environment variables, for example
 
 ### Route options
 
-| Field | Default | Description |
-|---|---|---|
-| `policy` | `"redis"` | `redis`, `redis-sentinel` or `redis-cluster`. |
-| `cache_ttl` | `300` | Seconds. Used when `cache_control` is false. |
-| `cache_key` | `["$host", "$request_uri"]` | Variables and strings joined into the cache key. |
-| `cache_method` | `["GET", "HEAD"]` | Methods that may be cached (`GET`, `POST`, `HEAD`). |
-| `cache_http_status` | `[200, 301, 404]` | Upstream status codes that may be cached. |
-| `cache_control` | `false` | Follow HTTP `Cache-Control` and `Expires` semantics (TTL from the response; request `max-age`/`min-fresh`/`no-cache`/`only-if-cached` honoured). |
-| `cache_bypass` | none | Variables. If any of them is non-empty and not `"0"`, skip the cache lookup. |
-| `no_cache` | none | Variables. If any of them is non-empty and not `"0"`, don't store the response. |
-| `hide_cache_headers` | `false` | Remove `Expires` and `Cache-Control` from responses. |
-| `consumer_isolation` | `true` | Give every authenticated consumer its own cache. **Keep this on** for anything user-specific. |
-| `cache_set_cookie` | `false` | Allow caching responses that carry `Set-Cookie`. |
-| `max_resp_body_size` | `1048576` | Bytes. Responses this size or larger are not cached. |
-| `cache_lock` | `false` | On a miss, only one request per URL goes upstream; the others wait for its response. |
-| `cache_lock_timeout` | `5` | Seconds a request waits for another request's response (1–60). |
-| `stale_while_updating` | `0` | For this many seconds after expiry, serve the expired copy (status `UPDATING`) while one request refreshes it. Must be ≤ `expired_retention`. |
-| `purge_prefix_depth` | `0` | 0–8. Record every cached response under its first N URL path levels, so `PURGE /a/b/*` works for prefixes up to N levels deep. |
+| Field                  | Default                     | Description                                                                                                                                      |
+| ---------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `policy`               | `"redis"`                   | `redis`, `redis-sentinel` or `redis-cluster`.                                                                                                    |
+| `cache_ttl`            | `300`                       | Seconds. Used when `cache_control` is false.                                                                                                     |
+| `cache_key`            | `["$host", "$request_uri"]` | Variables and strings joined into the cache key.                                                                                                 |
+| `cache_method`         | `["GET", "HEAD"]`           | Methods that may be cached (`GET`, `POST`, `HEAD`).                                                                                              |
+| `cache_http_status`    | `[200, 301, 404]`           | Upstream status codes that may be cached.                                                                                                        |
+| `cache_control`        | `false`                     | Follow HTTP `Cache-Control` and `Expires` semantics (TTL from the response; request `max-age`/`min-fresh`/`no-cache`/`only-if-cached` honoured). |
+| `cache_bypass`         | none                        | Variables. If any of them is non-empty and not `"0"`, skip the cache lookup.                                                                     |
+| `no_cache`             | none                        | Variables. If any of them is non-empty and not `"0"`, don't store the response.                                                                  |
+| `hide_cache_headers`   | `false`                     | Remove `Expires` and `Cache-Control` from responses.                                                                                             |
+| `consumer_isolation`   | `true`                      | Give every authenticated consumer its own cache. **Keep this on** for anything user-specific.                                                    |
+| `cache_set_cookie`     | `false`                     | Allow caching responses that carry `Set-Cookie`.                                                                                                 |
+| `max_resp_body_size`   | `1048576`                   | Bytes. Responses this size or larger are not cached.                                                                                             |
+| `cache_lock`           | `false`                     | On a miss, only one request per URL goes upstream; the others wait for its response.                                                             |
+| `cache_lock_timeout`   | `5`                         | Seconds a request waits for another request's response (1–60).                                                                                   |
+| `stale_while_updating` | `0`                         | For this many seconds after expiry, serve the expired copy (status `UPDATING`) while one request refreshes it. Must be ≤ `expired_retention`.    |
+| `purge_prefix_depth`   | `0`                         | 0–8. Record every cached response under its first N URL path levels, so `PURGE /a/b/*` works for prefixes up to N levels deep.                   |
 
 ## Usage
 
@@ -251,14 +252,14 @@ on).
 
 **Cache status values:**
 
-| `Apisix-Cache-Status` | Meaning |
-|---|---|
-| `HIT` | Served from Redis. |
-| `MISS` | Not in the cache, or Redis is unavailable (fail-open); fetched from upstream. |
-| `EXPIRED` | Was cached but expired; fetched from upstream. |
-| `STALE` | Cached copy is too old for the request's `Cache-Control`; fetched from upstream. |
-| `BYPASS` | `cache_bypass` matched, or the request said `no-cache`/`no-store`. |
-| `UPDATING` | Expired copy served while another request refreshes it (`stale_while_updating`). |
+| `Apisix-Cache-Status` | Meaning                                                                          |
+| --------------------- | -------------------------------------------------------------------------------- |
+| `HIT`                 | Served from Redis.                                                               |
+| `MISS`                | Not in the cache, or Redis is unavailable (fail-open); fetched from upstream.    |
+| `EXPIRED`             | Was cached but expired; fetched from upstream.                                   |
+| `STALE`               | Cached copy is too old for the request's `Cache-Control`; fetched from upstream. |
+| `BYPASS`              | `cache_bypass` matched, or the request said `no-cache`/`no-store`.               |
+| `UPDATING`            | Expired copy served while another request refreshes it (`stale_while_updating`). |
 
 ## How it works
 
@@ -304,23 +305,24 @@ the same gateway. Absolute numbers will be higher on real hardware.
 **Cache hits, requests per second:**
 
 | Response size | APISIX memory cache | Redis single | Redis Sentinel | Redis Cluster |
-|---|---|---|---|---|
-| 1 KB | 21,990 | 12,790 | 12,510 | 10,090 |
-| 100 KB | 2,850 | **6,910** | **6,310** | **6,380** |
-| 1 MB | 305 | **760** | **784** | **812** |
+| ------------- | ------------------- | ------------ | -------------- | ------------- |
+| 1 KB          | 21,990              | 12,790       | 12,510         | 10,090        |
+| 100 KB        | 2,850               | **6,910**    | **6,310**      | **6,380**     |
+| 1 MB          | 305                 | **760**      | **784**        | **812**       |
 
 **Stampede test:** a hot URL with a 1 s TTL, a 50 ms backend, 10 s of load.
 
-| Setting | Upstream calls |
-|---|---|
-| no protection | 500 |
-| `cache_lock` | **10** |
+| Setting                | Upstream calls             |
+| ---------------------- | -------------------------- |
+| no protection          | 500                        |
+| `cache_lock`           | **10**                     |
 | `stale_while_updating` | **10** (p99 46 ms → 11 ms) |
 
 **Prefix purge of 10,000 entries:** single 132 ms, Sentinel 161 ms,
 Cluster 195 ms.
 
 **Failover:**
+
 - **Sentinel master killed under load:** every request served (65,947 of
   65,947), worst request 18 ms, cache back at 100% HITs on the new master
   about 4 s after the kill.
@@ -391,13 +393,13 @@ Cluster 195 ms.
 
 ## Testing
 
-| What | How | Where it runs |
-|---|---|---|
-| Functional suite, about 270 checks on single, Sentinel and Cluster (every behaviour of APISIX's `memory.t`, plus everything above), ACL, TLS, outages | `tests/run.sh` | nginx + lua-nginx-module with APISIX's own Redis-cluster helper, proxy-cache util and jsonschema |
-| + Sentinel and Cluster master killed under load | `tests/run.sh failover` | same |
-| + benchmark against the built-in memory cache | `tests/run.sh all` | same, needs `wrk` |
-| Smoke test in the **official APISIX image** | `docker/smoke.sh` | Docker |
-| All of the above except the benchmark | GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) | every push |
+| What                                                                                                                                                  | How                                                                     | Where it runs                                                                                    |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Functional suite, about 270 checks on single, Sentinel and Cluster (every behaviour of APISIX's `memory.t`, plus everything above), ACL, TLS, outages | `tests/run.sh`                                                          | nginx + lua-nginx-module with APISIX's own Redis-cluster helper, proxy-cache util and jsonschema |
+| + Sentinel and Cluster master killed under load                                                                                                       | `tests/run.sh failover`                                                 | same                                                                                             |
+| + benchmark against the built-in memory cache                                                                                                         | `tests/run.sh all`                                                      | same, needs `wrk`                                                                                |
+| Smoke test in the **official APISIX image**                                                                                                           | `docker/smoke.sh`                                                       | Docker                                                                                           |
+| All of the above except the benchmark                                                                                                                 | GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) | every push                                                                                       |
 
 See [tests/README.md](tests/README.md) for requirements.
 
@@ -427,14 +429,14 @@ See [tests/README.md](tests/README.md) for requirements.
 
 ## Differences from the built-in proxy-cache
 
-| | memory (built-in) | proxy-cache-redis |
-|---|---|---|
-| Where entries live | per APISIX node | shared by all nodes; survives APISIX restarts |
-| Storage unavailable | can't happen | fail-open (`MISS`), with backoff; `PURGE` returns `503` |
-| `max_resp_body_size` default | 64 MiB | 1 MiB |
-| Stampede protection | none | `cache_lock`, `stale_while_updating` |
-| Purge by prefix | no | `purge_prefix_depth` |
-| `cache_zone`, `cache_strategy` | yes | not applicable (`policy` instead) |
+|                                | memory (built-in) | proxy-cache-redis                                       |
+| ------------------------------ | ----------------- | ------------------------------------------------------- |
+| Where entries live             | per APISIX node   | shared by all nodes; survives APISIX restarts           |
+| Storage unavailable            | can't happen      | fail-open (`MISS`), with backoff; `PURGE` returns `503` |
+| `max_resp_body_size` default   | 64 MiB            | 1 MiB                                                   |
+| Stampede protection            | none              | `cache_lock`, `stale_while_updating`                    |
+| Purge by prefix                | no                | `purge_prefix_depth`                                    |
+| `cache_zone`, `cache_strategy` | yes               | not applicable (`policy` instead)                       |
 
 ## License
 
