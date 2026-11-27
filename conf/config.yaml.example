@@ -1,0 +1,76 @@
+# Merge these sections into your APISIX conf/config.yaml.
+
+apisix:
+  # Directory that contains this repository's `apisix/` folder.
+  extra_lua_path: "/opt/apisix-plugins/apisix-proxy-cache-redis/?.lua"
+
+# IMPORTANT: when you set `plugins:` in config.yaml it REPLACES the built-in
+# list. Copy the default list from apisix/cli/config.lua (the `plugins = {`
+# table) of your APISIX version, keep what you use, and add proxy-cache-redis.
+plugins:
+  # - ...your existing plugins...
+  - proxy-cache-redis
+
+plugin_attr:
+  proxy-cache-redis:
+    key_prefix: "apisix:proxy-cache:"  # every Redis key starts with this (no { or })
+    expired_retention: 60              # seconds an expired entry is kept: reported as
+                                       # EXPIRED (not MISS), PURGE returns 200, and
+                                       # stale_while_updating can serve it
+    failure_backoff: 1                 # seconds a worker skips Redis after a
+                                       # connection error/timeout (0 = never skip)
+    write_concurrency: 4               # background write drainers per worker
+    max_pending_writes: 10000          # per-worker write queue limit (items)...
+    max_pending_bytes: 67108864        # ...and bytes; beyond them writes are dropped
+
+    # Define only the section(s) you use. Each route picks one with `policy`.
+
+    # policy: "redis" -- one Redis server (or a managed endpoint)
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      # username: cache               # Redis 6+ ACL user (optional)
+      password: ${{REDIS_PASSWORD}}   # read from env var; or a literal string
+      database: 0
+      timeout: 200                    # ms, for connect/send/read
+      ssl: false
+      ssl_verify: false
+      # server_name: redis.internal   # TLS SNI (optional)
+      keepalive_timeout: 10000        # ms
+      keepalive_pool: 100
+
+    # policy: "redis-sentinel" -- master/replicas managed by Redis Sentinel
+    redis-sentinel:
+      sentinels:
+        - "10.0.0.11:26379"
+        - "10.0.0.12:26379"
+        - "10.0.0.13:26379"
+      master_name: mymaster
+      # sentinel_username: sentinel   # if your sentinels require AUTH
+      # sentinel_password: ${{SENTINEL_PASSWORD}}
+      password: ${{REDIS_PASSWORD}}   # password of the Redis master
+      database: 0
+      timeout: 200
+      ssl: false                      # applies to sentinels and master
+      keepalive_timeout: 10000
+      keepalive_pool: 100
+
+    # policy: "redis-cluster" -- Redis Cluster
+    redis-cluster:
+      nodes:
+        - "10.0.0.5:7000"
+        - "10.0.0.6:7001"
+        - "10.0.0.7:7002"
+      name: cache-cluster             # any unique name for this cluster
+      password: ${{REDIS_CLUSTER_PASSWORD}}
+      timeout: 200
+      ssl: false
+      ssl_verify: false
+      keepalive_timeout: 10000
+      keepalive_pool: 100
+
+# Only needed if a route uses "policy": "redis-cluster".
+nginx_config:
+  http:
+    custom_lua_shared_dict:
+      plugin-proxy-cache-redis-cluster-slot-lock: 1m

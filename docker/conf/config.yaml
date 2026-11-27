@@ -1,0 +1,36 @@
+apisix:
+  node_listen: 9080
+  enable_ipv6: false
+  extra_lua_path: "/opt/proxy-cache-redis/?.lua"
+
+deployment:
+  role: data_plane
+  role_data_plane:
+    config_provider: yaml
+
+# Only what this test needs. In your own config.yaml keep your full list
+# and add proxy-cache-redis to it.
+plugins:
+  - proxy-cache-redis
+
+plugin_attr:
+  proxy-cache-redis:
+    key_prefix: "apisix:proxy-cache:"
+    redis:
+      host: 172.30.0.12
+      port: 6379
+    redis-sentinel:
+      sentinels:
+        - "172.30.0.14:26379"
+      master_name: mymaster
+    redis-cluster:
+      nodes:
+        - "172.30.0.11:7000"
+        - "172.30.0.11:7001"
+        - "172.30.0.11:7002"
+      name: smoke-cluster
+
+nginx_config:
+  http:
+    custom_lua_shared_dict:
+      plugin-proxy-cache-redis-cluster-slot-lock: 1m

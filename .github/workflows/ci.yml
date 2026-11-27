@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lua syntax and style
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua
+        run: sudo apt-get update -q && sudo apt-get install -y -q lua5.1
+      - name: Syntax check
+        run: find apisix tests -name '*.lua' -print0 | xargs -0 -n1 luac5.1 -p
+      - name: Line length (APISIX style, max 100)
+        run: |
+          if awk 'length > 100 { print FILENAME ":" FNR; bad=1 } END { exit bad }' \
+               $(find apisix -name '*.lua'); then echo ok; else exit 1; fi
+
+  e2e:
+    name: End-to-end tests (real Redis, Sentinel, Cluster) + failover
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install nginx-lua, Redis
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q nginx-core libnginx-mod-http-lua lua-resty-core \
+            lua-resty-lrucache lua-cjson redis-server openssl
+          # the distro services are not needed (and would hold ports)
+          sudo systemctl stop nginx redis-server || true
+      - name: Run tests
+        run: tests/run.sh failover
+
+  apisix-smoke:
+    name: Smoke test inside the official APISIX image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        apisix: ["3.21.0-debian"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run smoke test
+        env:
+          APISIX_IMAGE_TAG: ${{ matrix.apisix }}
+        run: docker/smoke.sh

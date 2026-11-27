@@ -1,0 +1,54 @@
+load_module /usr/lib/nginx/modules/ndk_http_module.so;
+load_module /usr/lib/nginx/modules/ngx_http_lua_module.so;
+
+worker_processes __WORKERS__;
+daemon on;
+pid __WORK__/logs/gateway.pid;
+error_log __WORK__/logs/error.log warn;
+
+events { worker_connections 4096; }
+
+http {
+    access_log off;
+    lua_package_path "__ROOT__/lua/?.lua;__ROOT__/stubs/?.lua;__PLUGIN__/?.lua;__WORK__/apisix/?.lua;__WORK__/apisix/?/init.lua;__WORK__/libs/?.lua;/usr/share/lua/5.1/?.lua;;";
+    lua_package_cpath "/usr/lib/x86_64-linux-gnu/lua/5.1/?.so;;";
+
+    lua_shared_dict plugin-proxy-cache-redis-cluster-slot-lock 1m;
+    lua_shared_dict redis_cluster_health 10m;
+    lua_shared_dict memory_cache 200m;
+    lua_shared_dict testcfg 1m;
+
+    init_by_lua_block { require("runner").init() }
+
+    upstream backend {
+        server 127.0.0.1:1980;
+        keepalive 256;
+    }
+
+    server {
+        listen 1984 backlog=4096;
+
+        location /admin { content_by_lua_block { require("runner").admin() } }
+
+        # APISIX's built-in proxy-cache (benchmark comparison) needs this
+        # variable; proxy-cache-redis must work without it, so only here
+        location ~ /memory {
+            set $upstream_cache_key "";
+            access_by_lua_block { require("runner").access() }
+            header_filter_by_lua_block { require("runner").header_filter() }
+            body_filter_by_lua_block { require("runner").body_filter() }
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
+            proxy_pass http://backend;
+        }
+
+        location / {
+            access_by_lua_block { require("runner").access() }
+            header_filter_by_lua_block { require("runner").header_filter() }
+            body_filter_by_lua_block { require("runner").body_filter() }
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
+            proxy_pass http://backend;
+        }
+    }
+}

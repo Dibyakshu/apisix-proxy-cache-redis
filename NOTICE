@@ -1,0 +1,15 @@
+apisix-proxy-cache-redis
+Copyright 2026 The apisix-proxy-cache-redis authors
+
+This product includes software derived from Apache APISIX
+(https://github.com/apache/apisix), Copyright The Apache Software
+Foundation, licensed under the Apache License, Version 2.0:
+
+  - apisix/plugins/proxy-cache-redis/handler.lua is derived from
+    apisix/plugins/proxy-cache/memory_handler.lua
+  - apisix/plugins/proxy-cache-redis.lua is derived from
+    apisix/plugins/proxy-cache/init.lua
+  - tests/stubs/apisix/core.lua contains code copied from
+    apisix/core/response.lua
+
+Upstream revision: 22ce60adae3c51177d32225ace62cdeabbac8706 (2026-11-26).

@@ -1,0 +1,60 @@
+routes:
+  -
+    id: single
+    uri: /single/*
+    plugins:
+      proxy-cache-redis:
+        policy: redis
+        cache_ttl: 60
+    upstream:
+      type: roundrobin
+      nodes:
+        "172.30.0.13:80": 1
+  -
+    id: sentinel
+    uri: /sentinel/*
+    plugins:
+      proxy-cache-redis:
+        policy: redis-sentinel
+        cache_ttl: 60
+    upstream:
+      type: roundrobin
+      nodes:
+        "172.30.0.13:80": 1
+  -
+    id: cluster
+    uri: /cluster/*
+    plugins:
+      proxy-cache-redis:
+        policy: redis-cluster
+        cache_ttl: 60
+    upstream:
+      type: roundrobin
+      nodes:
+        "172.30.0.13:80": 1
+  -
+    id: protected
+    uri: /protected/*
+    plugins:
+      proxy-cache-redis:
+        policy: redis
+        cache_ttl: 1
+        cache_lock: true
+        stale_while_updating: 30
+    upstream:
+      type: roundrobin
+      nodes:
+        "172.30.0.13:80": 1
+  -
+    id: prefix
+    uri: /prefix/*
+    plugins:
+      proxy-cache-redis:
+        policy: redis-cluster
+        cache_ttl: 60
+        purge_prefix_depth: 2
+    upstream:
+      type: roundrobin
+      nodes:
+        "172.30.0.13:80": 1
+#END
