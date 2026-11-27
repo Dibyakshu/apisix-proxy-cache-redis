@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- README: architecture, benchmark and stampede diagrams.
+
 ## 0.3.1
 
 - Docker smoke test: set `stream_plugins: []` and only fail on errors from

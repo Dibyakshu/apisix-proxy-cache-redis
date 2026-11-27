@@ -13,12 +13,7 @@ line. On top of that it adds the things a shared production cache needs:
 - fail-open behaviour when Redis is down;
 - clean failover on Sentinel and Cluster.
 
-```
-client ──► APISIX node 1 ──┐
-client ──► APISIX node 2 ──┼──► Redis (single │ Sentinel │ Cluster)   one shared cache
-client ──► APISIX node N ──┘         │
-                                     └─ MISS ──► your upstream
-```
+![Per-node memory cache vs one shared Redis cache](docs/architecture.png)
 
 ## Contents
 
@@ -308,6 +303,8 @@ These are excerpts; full results and method are in
 and wrk, and compared against APISIX's own `proxy-cache` memory plugin in
 the same gateway. Absolute numbers will be higher on real hardware.
 
+![Cache hits per second by response size: APISIX memory cache vs Redis single, Sentinel and Cluster](docs/benchmarks.png)
+
 **Cache hits, requests per second:**
 
 | Response size | APISIX memory cache | Redis single | Redis Sentinel | Redis Cluster |
@@ -315,6 +312,8 @@ the same gateway. Absolute numbers will be higher on real hardware.
 | 1 KB          | 21,990              | 12,790       | 12,510         | 10,090        |
 | 100 KB        | 2,850               | **6,910**    | **6,310**      | **6,380**     |
 | 1 MB          | 305                 | **760**      | **784**        | **812**       |
+
+![Stampede test: 500 upstream calls without protection, 10 with cache_lock or stale_while_updating](docs/stampede.png)
 
 **Stampede test:** a hot URL with a 1 s TTL, a 50 ms backend, 10 s of load.
 
